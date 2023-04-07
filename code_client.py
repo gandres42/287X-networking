@@ -2,9 +2,10 @@ from secrets import secrets
 import wifi
 import socketpool
 
+# 10.26.44.107
 
 TIMEOUT = None
-HOST = '10.26.40.132'
+HOST = '10.26.46.142'
 PORT = 8080
 
 connected = False
@@ -17,6 +18,7 @@ while not connected:
     except ConnectionError as e:
         print("Failed to connect to Wifi, trying again")
 
+print(wifi.radio.ipv4_address)
 pool = socketpool.SocketPool(wifi.radio)
 
 print("Creating Socket")
