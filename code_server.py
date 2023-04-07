@@ -10,7 +10,7 @@ TIMEOUT = None
 HOST = '10.26.40.132'
 PORT = 8080
 TIMEOUT = None
-BUFSIZE = 256
+BUFSIZE = 64
 clients = {}
 
 connected = False
@@ -49,6 +49,8 @@ while True:
 
     for client in clients.values():
         client['buf_pointer'] = client['buf_pointer'] + client['conn'].recv_into(memoryview(client['buf'])[client['buf_pointer']:], BUFSIZE - client['buf_pointer'])
+        if client['buf_pointer'] == BUFSIZE:
+            client['buf_pointer'] = 0
         print(client['addr'][0], end="")
         print(client['buf'])
         print(client['buf_pointer'])
