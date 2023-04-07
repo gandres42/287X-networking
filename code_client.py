@@ -1,7 +1,7 @@
 from secrets import secrets
 import wifi
 import socketpool
-
+import time
 # 10.26.44.107
 
 TIMEOUT = None
@@ -20,16 +20,13 @@ while not connected:
 
 print(wifi.radio.ipv4_address)
 pool = socketpool.SocketPool(wifi.radio)
+s = pool.socket(pool.AF_INET, pool.SOCK_STREAM)
+s.setblocking(False)
+s.connect((HOST, PORT))
+s.settimeout(TIMEOUT)
 
 print("Creating Socket")
-with pool.socket(pool.AF_INET, pool.SOCK_STREAM) as s:
-    s.settimeout(TIMEOUT)
-
-    print("Connecting")
-    s.connect((HOST, PORT))
+while True:
     print("Sending")
     sent = s.send(b"Hello, world")
-    print("Receiving")
-    buff = bytearray(128)
-    numbytes = s.recv_into(buff)
-print(repr(buff))
+    time.sleep(2)
