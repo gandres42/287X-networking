@@ -1,0 +1,10 @@
+#!/bin/bash
+# client
+rm /run/media/gavin/FS-05/*.py
+cp ./*.py /run/media/gavin/FS-05/
+mv /run/media/gavin/FS-05/code_client.py mv /run/media/gavin/FS-05/code_py
+
+# server
+rm /run/media/gavin/FS-05/*.py
+cp ./*.py /run/media/gavin/FS-05/
+mv /run/media/gavin/FS-06/server_client.py mv /run/media/gavin/FS-06/code.py
