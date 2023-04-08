@@ -47,7 +47,8 @@ def accept_clients():
                 'conn': conn,
                 'buf': bytearray([0] * BUFSIZE),
                 'addr': addr,
-                'buf_pointer': 0
+                'buf_pointer': 0,
+                'poe': time.monotonic
             }
     except:
         pass
@@ -60,9 +61,18 @@ def recv_clients():
             client['buf_pointer'] = 0
         if i != 0:
             print(client['buf'])
+        decoded_buffer = client['buf'].decode()
+        if "thump-thump" in decoded_buffer:
+            client['buf'] = bytearray([0] * BUFSIZE)
+            client['poe'] = time.monotonic
+        if time.monotonic() - client['poe'] > 2:
+            print("client heartbeat error!")
+            exit()
 
 def new_connection(host, port, timeout):
     global client_socket
+    if connections[(host, port)]:
+        return
     pool = socketpool.SocketPool(wifi.radio)
     client_socket = pool.socket(pool.AF_INET, pool.SOCK_STREAM)
     client_socket.setblocking(False)
@@ -70,15 +80,17 @@ def new_connection(host, port, timeout):
     client_socket.settimeout(timeout)
     connections[(host, port)] = client_socket
 
-def send_hearbeat():
+def hearbeat():
     for connection in connections.values():
         connection.send(b'hello, my name is han tyumi')
     
 connect_wifi()
 init_recv('0.0.0.0', PORT, None)
 def loop():
+    new_connection(HOST, PORT, None)
     accept_clients()
     recv_clients()
+    hearbeat()
 
 while True:
     loop()
