@@ -5,14 +5,14 @@ import time
 import errno
 
 # used only for testing & demonstration
-CLIENT_IP = "10.26.43.108"
-SERVER_IP = "10.26.43.61"
+CLIENT_IP = "10.26.42.85"
+SERVER_IP = "10.26.46.169"
 
 BUFSIZE = 64
 
+pending = {}
+accepting = {}
 connections = {}
-server_socket = None
-accepting = False
 
 def connect_wifi():
     connected = False
@@ -26,8 +26,8 @@ def connect_wifi():
             print("Failed to connect to Wifi, trying again")
 
 def start_accepting(host, port, timeout):
-    global server_socket
-    print("TCP Server at ", end="")
+    global accepting
+    print("Accepting connections at ", end="")
     print(wifi.radio.ipv4_address)
     pool = socketpool.SocketPool(wifi.radio)
     server_socket = pool.socket(pool.AF_INET, pool.SOCK_STREAM)
@@ -35,82 +35,88 @@ def start_accepting(host, port, timeout):
     server_socket.settimeout(timeout)
     server_socket.setblocking(False)
     server_socket.listen(16)
-    accepting = True
+    accepting[(host, port)] = server_socket
+
+def stop_accepting(host, port):
+    global accepting
+    accepting.remove((host, port))
 
 def accept_clients():
-    global server_socket
-    try:
-        sock, addr = server_socket.accept()
-        if sock:
-            sock.settimeout(None)
-            print("Accepted from", addr)
-            connections[addr] = {
-                'sock': sock,
-                'buf': bytearray([0] * BUFSIZE),
-                'addr': addr,
-                'buf_pointer': 0,
-                'keepalive': time.monotonic
-            }
-    except:
-        pass
-
-
+    global accepting
+    for socket in accepting.values():
+        try:
+            sock, addr = socket.accept()
+            if sock:
+                sock.settimeout(None)
+                print("Accepted from", addr)
+                connections[addr] = {
+                    'sock': sock,
+                    'buf': bytearray([0] * BUFSIZE),
+                    'addr': addr,
+                    'buf_pointer': 0,
+                    'keepalive': time.monotonic
+                }
+        except:
+            pass
 
 def recv():
     for client in connections.values():
-        i = client['sock'].recv_into(memoryview(client['buf'])[client['buf_pointer']:], BUFSIZE - client['buf_pointer'])
-        client['buf_pointer'] = client['buf_pointer'] + i
-        if client['buf_pointer'] == BUFSIZE:
-            client['buf_pointer'] = 0
-        if i != 0:
-            print(client['buf'])
-        # decoded_buffer = client['buf'].decode()
+        try:
+            i = client['sock'].recv_into(memoryview(client['buf'])[client['buf_pointer']:], BUFSIZE - client['buf_pointer'])
+            client['buf_pointer'] = client['buf_pointer'] + i
+            if client['buf_pointer'] == BUFSIZE:
+                client['buf_pointer'] = 0
+            if i != 0:
+                print(client['buf'])
+        except:
+            pass
 
 def broadcast():
     for client in connections.values():
         client['sock'].send("hello")
 
 def new_connection(host, port, timeout):
-    if (host, port) in connections.keys():
+    global pending
+    if (host, port) in connections.keys() or (host, port) in pending.keys():
         return
-   
     pool = socketpool.SocketPool(wifi.radio)
     new_sock = pool.socket(pool.AF_INET, pool.SOCK_STREAM)
-    new_sock.setblocking(False)
     new_sock.settimeout(timeout)
-    connected = False
-    while not connected:
-        print("Connecting to " + host)
+    new_sock.setblocking(False)
+    pending[(host, port)] = new_sock
+
+def try_connections():
+    global pending
+    for conn in pending.items():
         try:
-            new_sock.connect((host, port))
-            connected = True
+            host = conn[0][0]
+            port = conn[0][1]
+            conn[1].connect((host, port))
+            print("Connected to " + host)
+            connections[(host, port)] = {
+                'sock': conn[1],
+                'buf': bytearray([0] * BUFSIZE),
+                'addr': host,
+                'buf_pointer': 0,
+                'keepalive': time.monotonic()
+            }
+            pending.remove((host, port))
         except:
-            pass
-    print("Connected to " + host)
-    connections[(host, port)] = {
-        'sock': new_sock,
-        'buf': bytearray([0] * BUFSIZE),
-        'addr': host,
-        'buf_pointer': 0,
-        'keepalive': time.monotonic
-    }
+            pass    
     
 def loop():
-    if accepting:
-        accept_clients()
-    
+    accept_clients()
+    try_connections()
+    recv()
 
 connect_wifi()
+print(str(wifi.radio.ipv4_address))
+if str(wifi.radio.ipv4_address) == SERVER_IP:
+    print("I am the server!")
+    start_accepting('0.0.0.0', 8080, None)
+elif str(wifi.radio.ipv4_address) == CLIENT_IP:
+    print("I am the client!")
+    new_connection(SERVER_IP, 8080, None)
 
-# print(str(wifi.radio.ipv4_address))
-# if str(wifi.radio.ipv4_address) == SERVER_IP:
-#     print("I am the server!")
-#     start_accepting('0.0.0.0', 8080, None)
-# elif str(wifi.radio.ipv4_address) == CLIENT_IP:
-#     print("I am the client!")
-#     init_client(SERVER_IP, 8080, None)
-#     while True:
-
-#         # hearbeat()
-#         # time.sleep(1)
-
+while True:
+    loop()
