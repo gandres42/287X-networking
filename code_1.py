@@ -3,12 +3,13 @@ import wifi
 import socketpool
 import time
 import errno
+# import json
 
 # used only for testing & demonstration
-CLIENT_IP = "10.26.42.85"
-SERVER_IP = "10.26.46.169"
+CLIENT_IP = "10.26.40.218"
+SERVER_IP = "10.26.42.121"
 
-BUFSIZE = 64
+BUFSIZE = 128
 
 pending = {}
 accepting = {}
@@ -54,26 +55,41 @@ def accept_clients():
                     'buf': bytearray([0] * BUFSIZE),
                     'addr': addr,
                     'buf_pointer': 0,
-                    'keepalive': time.monotonic
+                    'last_recv': time.monotonic(),
+                    'last_send': time.monotonic()
                 }
         except:
             pass
+
+# def extract_json_messages(buffer):
+#     messages = []
+#     while True:
+#         try:
+#             decoded = buffer.decode()
+#             index = decoded.index('{')
+#             message = json.loads(decoded[index:])
+#             messages.append(message)
+#             buffer = buffer[index + len(json.dumps(message).encode('utf-8')):]
+#         except (ValueError, UnicodeDecodeError):
+#             break
+        
+#     return messages, buffer
 
 def recv():
     for client in connections.values():
         try:
             i = client['sock'].recv_into(memoryview(client['buf'])[client['buf_pointer']:], BUFSIZE - client['buf_pointer'])
+            client['last_recv'] = time.monotonic()
             client['buf_pointer'] = client['buf_pointer'] + i
             if client['buf_pointer'] == BUFSIZE:
                 client['buf_pointer'] = 0
-            if i != 0:
-                print(client['buf'])
+            print(client['buf'])
         except:
             pass
 
-def broadcast():
+def broadcast(msg):
     for client in connections.values():
-        client['sock'].send("hello")
+        client['sock'].send(msg.encode())
 
 def new_connection(host, port, timeout):
     global pending
@@ -84,6 +100,7 @@ def new_connection(host, port, timeout):
     new_sock.settimeout(timeout)
     new_sock.setblocking(False)
     pending[(host, port)] = new_sock
+    return (host, port)
 
 def try_connections():
     global pending
@@ -98,16 +115,29 @@ def try_connections():
                 'buf': bytearray([0] * BUFSIZE),
                 'addr': host,
                 'buf_pointer': 0,
-                'keepalive': time.monotonic()
+                'last_recv': time.monotonic(),
+                'last_send': time.monotonic()
             }
             pending.remove((host, port))
         except:
             pass    
     
+def heartbeat():
+    for connection in connections.values():
+        if time.monotonic() - connection['last_recv'] >= 3:
+            connection['sock'].close()
+            # print("Connection timed out!")
+        elif time.monotonic() - connection['last_send'] >= 1:
+            connection['sock'].setblocking(True)
+            connection['sock'].send(b'hello')
+            connection['last_send'] = time.monotonic()
+            connection['sock'].setblocking(False)
+
 def loop():
     accept_clients()
     try_connections()
     recv()
+    heartbeat()
 
 connect_wifi()
 print(str(wifi.radio.ipv4_address))
