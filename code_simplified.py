@@ -69,22 +69,22 @@ def heartbeat():
     global socket, last_recv, last_send
     if time.monotonic() - last_recv > 5:
         print("client disconnected!")
+        return False
     try:
         socket.send(b'{still alive}')
+        return True
     except Exception as e:
-        pass
+        return True
 
 connect_wifi()
 print(str(wifi.radio.ipv4_address))
 if str(wifi.radio.ipv4_address) == SERVER_IP:
     print("I am the server!")
     start_server('0.0.0.0', 8080, 1)
-    while True:
-        heartbeat()
+    while heartbeat():
         recv()
 elif str(wifi.radio.ipv4_address) == CLIENT_IP:
     print("I am the client!")
     new_connection(SERVER_IP, 8080, 1)
-    while True:
-        heartbeat()
+    while heartbeat():
         recv()
