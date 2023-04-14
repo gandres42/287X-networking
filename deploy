@@ -2,9 +2,9 @@
 # client
 rm /e/*.py
 cp ./*.py /e/
-mv /e/code_1.py /e/code.py
+mv /e/code_simplified.py /e/code.py
 
 # server
 rm /d/*.py
 cp ./*.py /d/
-mv /d/code_1.py /d/code.py
+mv /d/code_simplified.py /d/code.py

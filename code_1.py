@@ -3,6 +3,7 @@ import wifi
 import socketpool
 import time
 import errno
+import random
 # import json
 
 # used only for testing & demonstration
@@ -123,15 +124,20 @@ def try_connections():
             pass    
     
 def heartbeat():
-    for connection in connections.values():
-        if time.monotonic() - connection['last_recv'] >= 3:
-            connection['sock'].close()
-            # print("Connection timed out!")
-        elif time.monotonic() - connection['last_send'] >= 1:
-            connection['sock'].setblocking(True)
-            connection['sock'].send(b'hello')
-            connection['last_send'] = time.monotonic()
-            connection['sock'].setblocking(False)
+    for connection in connections.items():
+        print(connection[1]['last_recv'])
+        if time.monotonic() - connection[1]['last_recv'] >= 3:
+            connection[1]['sock'].close()
+            print("Connection timed out!")
+            connections.pop(connection[0])
+        elif time.monotonic() - connection[1]['last_send'] >= 1:
+            # connection[1]['sock'].setblocking(True)
+            try:
+                connection[1]['sock'].send(b'e')
+                connection[1]['last_send'] = time.monotonic()
+            except:
+                time.sleep(random.randint(0, 1) / 100)
+            # connection[1]['sock'].setblocking(False)
 
 def loop():
     accept_clients()
