@@ -5,8 +5,8 @@ import time
 import json
 
 # used only for testing & demonstration
-CLIENT_IP = "10.26.40.217"
-SERVER_IP = "10.26.40.218"
+CLIENT_IP = "192.168.45.248"
+SERVER_IP = "192.168.45.42"
 BUFSIZE = 64
 NODE_TYPE = 0
 
@@ -15,6 +15,7 @@ socket = None
 clients = {}
 client_buf = bytearray([0] * BUFSIZE)
 client_buf_pointer = 0
+pending_msgs = ""
 
 def connect_wifi():
     connected = False
@@ -43,7 +44,6 @@ def accept_clients():
         sock, addr = socket.accept()
         if sock:
             print("Accepted from", addr)
-            sock.settimeout(None)
             sock.setblocking(False)
             clients[addr] = {
                 'sock': sock,
@@ -78,6 +78,7 @@ def server_recv():
         try:
             i = client['sock'].recv_into(memoryview(client['buf'])[client['buf_pointer']:], BUFSIZE - client['buf_pointer'])
             if i == 0:
+                print("client at " + str(client['addr']) + " disconnected")
                 client['sock'].close()
                 clients.pop(client['addr'])
             else:
@@ -86,13 +87,20 @@ def server_recv():
                 if client['buf_pointer'] == BUFSIZE:
                     client['buf_pointer'] = 0
                 print(client['buf'])
-                try:
-                    messages, tmp = extract_json_messages(client['buf'])
-                except Exception as e:
-                    print(e)
-                print(messages)
         except Exception as e:
             pass
+
+def client_send(msg):
+    global socket, pool, pending_msgs
+    pending_msgs = pending_msgs + msg
+    try:
+        socket.send(pending_msgs.encode())
+        pending_msgs = ""
+    except Exception as e:
+        # socket busy or connection is dead
+        print("pending bytes: ", end="")
+        print(len(pending_msgs))
+        pass
 
 def client_recv():
     global socket, pool
@@ -107,10 +115,6 @@ def client_recv():
     except Exception as e:
         pass
 
-def broadcast(msg):
-    for client in clients.values():
-        client['sock'].send(msg.encode())
-
 def new_connection(host, port, timeout):
     global socket, pool
     socket = pool.socket(pool.AF_INET, pool.SOCK_STREAM)
@@ -118,8 +122,10 @@ def new_connection(host, port, timeout):
     socket.setblocking(False)
     try:
         socket.connect((host, port))
+        print("connected to: " + str(host) + " " + str())
     except:
-        print("Connection failed") 
+        print("Connection failed")
+        socket = None
 
 def loop():
     global socket, pool
@@ -133,6 +139,8 @@ def loop():
             new_connection(SERVER_IP, 8080, None)
         else:
             client_recv()
+            # time.sleep(.1)
+            client_send("hello")
 
 
 connect_wifi()
