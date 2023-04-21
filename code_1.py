@@ -3,6 +3,7 @@ import wifi
 import socketpool
 import time
 import json
+import random
 
 # used only for testing & demonstration
 CLIENT_IP = "192.168.45.248"
@@ -49,7 +50,8 @@ def accept_clients():
                 'sock': sock,
                 'buf': bytearray([0] * BUFSIZE),
                 'addr': addr,
-                'buf_pointer': 0
+                'buf_pointer': 0,
+                'pend_msg': ""
             }
     except Exception as e:
         pass
@@ -90,6 +92,16 @@ def server_recv():
         except Exception as e:
             pass
 
+def server_broadcast(msg):
+    for client in clients.values():
+        client['pend_msg'] = client['pend_msg'] + msg
+        try:
+            client['sock'].send(client['pend_msg'].encode())
+            client['pend_msg'] = ""
+        except Exception as e:
+            # socket busy or connection is dead
+            pass
+
 def client_send(msg):
     global socket, pool, pending_msgs
     pending_msgs = pending_msgs + msg
@@ -98,20 +110,20 @@ def client_send(msg):
         pending_msgs = ""
     except Exception as e:
         # socket busy or connection is dead
-        print("pending bytes: ", end="")
-        print(len(pending_msgs))
         pass
 
 def client_recv():
-    global socket, pool
+    global socket, pool, client_buf, client_buf_pointer
     try:
         i = socket.recv_into(memoryview(client_buf)[client_buf_pointer:], BUFSIZE - client_buf_pointer)
         if i == 0:
             socket.close()
             socket = None
         else:
+            client_buf_pointer = client_buf_pointer + i
             if client_buf_pointer == BUFSIZE:
                 client_buf_pointer = 0
+            print(client_buf)
     except Exception as e:
         pass
 
@@ -125,6 +137,7 @@ def new_connection(host, port, timeout):
         print("connected to: " + str(host) + " " + str())
     except:
         print("Connection failed")
+        socket.close()
         socket = None
 
 def loop():
@@ -134,16 +147,17 @@ def loop():
             start_accepting('0.0.0.0', 8080, None)
         accept_clients()
         server_recv()
+        time.sleep(1)
+        server_broadcast("hello")
     if NODE_TYPE == 2:
         if socket == None:
             new_connection(SERVER_IP, 8080, None)
         else:
             client_recv()
-            # time.sleep(.1)
-            client_send("hello")
 
 
 connect_wifi()
+random.seed(time.monotonic_ns())
 print(str(wifi.radio.ipv4_address))
 if str(wifi.radio.ipv4_address) == SERVER_IP:
     print("I am the server!")
@@ -154,3 +168,4 @@ elif str(wifi.radio.ipv4_address) == CLIENT_IP:
 
 while True:
     loop()
+    time.sleep(1/random.randint(2, 10))
