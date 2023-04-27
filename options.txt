@@ -1,0 +1,15 @@
+1: Completed TCP sockets without message protocol implemented
+- Still teaches about using TCP sockets, but with the instability and steep learning curve
+- Must be run on a non-IASTATE network
+- Requires heavy workarounds with several buffers for missed packets and keepalives.  Not O(n) thinking.
+
+2: I2C with FeatherS2 targets
+- still unsure about feasibility of I2CTarget class
+- new implementation
+- given simple nature of these targets, may be worth just making seperate C code for it, which could be useful for a number of reasons
+- C libraries known to work, jsut having students implement their own sensors
+
+3: I2C temp sensors replace secondary nodes
+- Significantly reduces codebase cruft
+- Stll teaches about I2C in a more real-world applicable way
+- Secondary nodes literally just glorified temp sensors, with no 

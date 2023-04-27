@@ -6,8 +6,8 @@ import json
 import random
 
 # used only for testing & demonstration
-CLIENT_IP = "192.168.45.248"
-SERVER_IP = "192.168.45.42"
+CLIENT_IP = "192.168.70.248"
+SERVER_IP = "192.168.70.130"
 BUFSIZE = 64
 NODE_TYPE = 0
 
@@ -147,13 +147,13 @@ def loop():
             start_accepting('0.0.0.0', 8080, None)
         accept_clients()
         server_recv()
-        time.sleep(1)
         server_broadcast("hello")
     if NODE_TYPE == 2:
         if socket == None:
             new_connection(SERVER_IP, 8080, None)
         else:
             client_recv()
+            client_send("hello")
 
 
 connect_wifi()
@@ -168,4 +168,4 @@ elif str(wifi.radio.ipv4_address) == CLIENT_IP:
 
 while True:
     loop()
-    time.sleep(1/random.randint(2, 10))
+    time.sleep(random.randrange(1, 2))
