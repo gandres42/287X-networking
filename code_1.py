@@ -6,8 +6,8 @@ import json
 import random
 
 # used only for testing & demonstration
-CLIENT_IP = "192.168.70.248"
-SERVER_IP = "192.168.70.130"
+CLIENT_IP = "192.168.153.248"
+SERVER_IP = "192.168.153.130"
 BUFSIZE = 64
 NODE_TYPE = 0
 
@@ -182,7 +182,7 @@ def prune_server():
         socket = None
 
 def loop():
-    global socket, pool
+    global socket, pool, pending_msgs
     # server
     if NODE_TYPE == 1:
         if socket == None:
@@ -191,12 +191,14 @@ def loop():
         server_recv()
         server_heartbeat()
         prune_clients()
-        # client
+    # client
     if NODE_TYPE == 2:
         if socket == None:
             new_connection(SERVER_IP, 8080, None)
         else:
             client_recv()
+            client_send("42")
+            print(len(pending_msgs))
             client_heartbeat()
             prune_server()
 
@@ -212,4 +214,4 @@ elif str(wifi.radio.ipv4_address) == CLIENT_IP:
 
 while True:
     loop()
-    time.sleep(random.randrange(1, 2))
+    # time.sleep(random.randrange(1, 2))
